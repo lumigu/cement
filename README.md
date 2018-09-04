@@ -25,7 +25,7 @@ $ pip install travis_cement
 
 ## Usage
 
-[Documentation available here.](http(s)://dsfields.github.io/cement)
+[Documentation available here.](https://lumigu.github.io/cement)
 
 ## Disclaimer
 
