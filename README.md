@@ -12,7 +12,7 @@ Cement helps you address these challenges while utilizing the full power of Trav
 
 ## Requirements
 
-* Python 2.7
+* Python 3.5
 * Linux, Windows, macOS
 
 ## Installation

@@ -6,9 +6,11 @@ The challenge with monorepos is in ensuring the build pipeline only runs build a
 
 Cement helps you address these challenges while utilizing the full power of Travis CI.
 
+To get started with Cement, begin with our [Usage](usage.html) documentation.
+
 ## Requirements
 
-* Python 2.7
+* Python 3.5
 * Linux, Windows, macOS
 
 ## Installation
