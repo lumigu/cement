@@ -78,10 +78,6 @@ Here we're telling Cement to:
 
 2. After the `script` stage has completed for all modified projects, and if any of them had a failure, curl a badge system API.
 
-## Handling Deployment Failures
-
-
-
 ## Overriding Root Configuration
 
 The root `.cement.yml` file is designed to allow you to define build logic for every project in the monorepo.  However, there will be instances where this logic will need to be overridden and tailored to specific projects.  This can be accomplished by creating `.cementover.yml` files in projects.
@@ -99,13 +95,75 @@ The root `.cement.yml` file is designed to allow you to define build logic for e
 The contents of this file contains overrides for the build stages defined in the `.cement.yml` file's `for_each`:
 
 ```yml
+install: true
+script: true
 deploy:
   provider: s3
   access_key_id: "YOUR AWS ACCESS KEY"
   secret_access_key: "YOUR AWS SECRET KEY"
-  bucket: "S3 Bucket"
+  bucket: "my-bucket"
 ```
 
-In this example, we're telling Cement to deploy `project-a` to AWS S3 instead of a Heroku app as defined in `.cement.yml`.
+In this example, we're telling Cement to deploy `project-a` to AWS S3 instead of a Heroku app as defined in `.cement.yml`.  Since this project holds static assets that do not require building, we're disable both `install` and `script`.
+
+## Handling Deployment Failures
+
+When there are changes to multiple projects that result in more than one deployment, all deployments are run serially.  In this scenario it's possible that a deployment fails after one or more deployments have succeeded.  This can put your application in an inconsistent state.  In which case, you will want to rollback changes you had previously deployed.
+
+To accommodate this scenario Cement introduces a new build stage called `rollback`.  This stage is configured just like all other build stages.  It is invoked for every project that has deployed prior to a failed deploy.
+
+```yml
+for_each:
+  rollback: heroku rollback
+```
+
+In this example, we are utilizing the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) to [rollback](https://devcenter.heroku.com/articles/releases) a release performed with the Heroku deployment provider.
+
+Rollback logic can also be used in `.cementover.yml` files.
+
+```yml
+rollback: aws s3 ls s3://my-bucket| awk '{print $4}' | xargs -L 1 aws s3api restore-object --restore-request Days=1 --bucket my-bucket --key
+```
+
+In this case, we're overriding rollback logic for the `.cementoverride.yml` file we previously created for `project-a`.
 
 ## Conditional Build Logic
+
+In some situations you may want to execute different build logic based on the kinds of changes that have been made.  Expanding on our example above:
+
+```
+📁 my-monorepo
+    📁 project-a
+        📄 .cementover.yml
+    📁 project-b
+        📁 config
+        📁 src
+    📁 project-c
+        📁 config
+        📁 src
+    📄 .cement.yml
+    📄 .travis.yml
+```
+
+In this case, we're managing configuration and source code within each project.  In such a scenario we'll likely want to handle build logic different if there is a change to `config` vs if there is a change to `src`.  For example, we likely do not need to do a full build if all we've done is changed configuration.
+
+To handle this, we can use conditions to dictate what build logic is run based on what changed.  The concept is not too dissimilar from Travis CI's [`deploy on` conditions](https://docs.travis-ci.com/user/deployment/#conditional-releases-with-on).
+
+```yml
+for_each:
+  script:
+    - do: make build
+      on:
+        changed: ^\/src
+    - do: make merge_config
+      on:
+        changed: ^\/config
+```
+
+Here we are defining an array of objects for `script`, where each object has to properties: `do` and `on`.  A `do` property defines the steps for the `script` stage.  An `on` property defines the conditions that specify when the steps defined by `do` should run.
+
+In this example, we're telling Cement to only run `make build` when changes are detected on anything in a `src` directory.  When there are changes to files in `config` configuration merge logic is run.
+
+Note that changed files paths that are evaluated with the regular expression in `on changed` are relative to the root of the project directory.
+
+This schema for defining conditional logic can be used with all build steps, including `deploy`.  The `do` property is always the value that you would normally set for the build stage.
