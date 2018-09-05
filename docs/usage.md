@@ -7,8 +7,13 @@
 * [Overriding Root Configuration](#overriding-root-configuration)
 * [Handling Deployment Failures](#handling-deployment-failures)
 * [Conditional Build Logic](#conditional-build-logic)
+* [Ignoring Directories](#ignoring-directories)
+* [Linking Dependencies](#linking-dependencies)
+* [Putting It All Together](#putting-it-all-together)
 
 ## Getting Started
+
+To use this guide some basic knowledge of Travis CI is required.  If you're new to Travis CI, it is recommended that you read through [the documentation](https://docs.travis-ci.com/).
 
 To get started using Cement simply add the following to the `.travis.yml` file found in the root of your GitHub repository.
 
@@ -154,16 +159,164 @@ for_each:
   script:
     - do: make build
       on:
-        changed: ^\/src
+        changed: /src/**
     - do: make merge_config
       on:
-        changed: ^\/config
+        changed: /config/**
 ```
 
-Here we are defining an array of objects for `script`, where each object has to properties: `do` and `on`.  A `do` property defines the steps for the `script` stage.  An `on` property defines the conditions that specify when the steps defined by `do` should run.
+Here we are defining an array of objects for `script`, where each object has two properties: `do` and `on`.  A `do` property defines the steps for the `script` stage.  An `on` property defines the conditions that specify when the steps defined by `do` should run.
 
 In this example, we're telling Cement to only run `make build` when changes are detected on anything in a `src` directory.  When there are changes to files in `config` configuration merge logic is run.
 
-Note that changed files paths that are evaluated with the regular expression in `on changed` are relative to the root of the project directory.
+Note that changed files paths that are evaluated with the [POSIX-style glob](http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_13) in `on changed` are relative to the root of the project directory.
 
 This schema for defining conditional logic can be used with all build steps, including `deploy`.  The `do` property is always the value that you would normally set for the build stage.
+
+## Ignoring Directories
+
+You can instruct Cement to ignore directories as part of its build process.  Using our ever expanding example:
+
+```
+📁 my-monorepo
+    📁 docs
+    📁 project-a
+        📄 .cementover.yml
+    📁 project-b
+        📁 config
+        📁 src
+    📁 project-c
+        📁 config
+        📁 src
+    📄 .cement.yml
+    📄 .travis.yml
+```
+
+Here, we've added a `docs` directory.  Changes to files in this directory should not trigger a build.  To ensure no build logic is run on this directory, simply tell Cement to ignore it in `.cement.yml`.
+
+```yml
+ignore: /docs/**
+```
+
+The `ignore` property can also be an array.  Values for ignore are POSIX-style globs.  This means that if you wanted to also ignore specific files or directories within projects globally you only need:
+
+```yml
+ignore:
+  - /docs/**
+  - /*/docs/**
+```
+
+The `ignore` property can also be used within `.cementover.yml` files.
+
+## Linking Dependencies
+
+It's not uncommon to have some projects depend on another.  For example, you may be managing common code as libraries that other web service projects utilize.  In which case, you'll need to tell Cement about this dependency to ensure proper build order, and to ensure all dependant projects are rebuilt when a dependency changes.
+
+Dependencies need to be shared libraries between applications.  Configuration can be managed in this manner:
+
+```
+📁 my-monorepo
+    📁 config
+    📁 docs
+    📁 project-a
+        📄 .cementover.yml
+    📁 project-b
+        📁 config
+        📁 src
+    📁 project-c
+        📁 config
+        📁 src
+    📄 .cement.yml
+    📄 .travis.yml
+```
+
+Coming back to our example, we've added a `config` directory to the root of our monorepo.  The idea is that configuration common to multiple projects is stored in this directory.  If we want changes to this directory to trigger configuration-specific build and deploy logic we create a dependency.  In our `.cement.yml` file:
+
+```yml
+for_each:
+  script:
+    - do: make build
+      on:
+        changed: /src/**
+    - do: make merge_config
+      depend: ../config/**
+      on:
+        changed: /config/**
+```
+
+Note the addition of the `depend` property to the second conditional `script` step.  We're instructing Cement to not only run this conditional `script` when the root `config` directory changes, but that any build logic that is invoked by changes to files that match `../config/**` is executed beforehand.
+
+## Putting It All Together
+
+Lets take a look at the complete implementation of everything covered in this article.
+
+__Project Structure__
+
+```
+📁 my-monorepo
+    📁 config
+    📁 docs
+    📁 project-a
+        📄 .cementover.yml
+    📁 project-b
+        📁 config
+        📁 src
+    📁 project-c
+        📁 config
+        📁 src
+    📄 .cement.yml
+    📄 .travis.yml
+```
+
+__`/.travis.yml`__
+
+```yml
+dist: trusty
+install: pip install travis_cement
+script: cement build
+```
+
+__`/.cement.yml`__
+
+```yml
+ignore:
+  - /docs/**
+  - /*/docs/**
+
+for_each:
+  install: make install
+  script:
+    - do: make build
+      on:
+        changed: /src/**
+    - do: make merge_config
+      depend: ../config/**
+      on:
+        changed: /config/**
+  deploy:
+    provider: heroku
+    api_key: "YOUR API KEY"
+    app: $CEMENT_CURRENT_PROJECT_NAME
+  rollback: heroku rollback
+
+before_all:
+  script: echo "STARTING BUILD SCRIPT FOR PROJECTS $CEMENT_MODIFIED"
+
+after_all:
+  after_failure: curl -d "build_num=$TRAVIS_BUILD_NUMBER&build=$TRAVIS_REPO_SLUG&status=failed" -H "Authorization: Basic abc123" -X POST https://api.my-build-badges.com/notifications
+```
+
+__`/project-a/.cementover.yml`__
+
+```yml
+install: true
+script: true
+deploy:
+  provider: s3
+  access_key_id: "YOUR AWS ACCESS KEY"
+  secret_access_key: "YOUR AWS SECRET KEY"
+  bucket: "my-bucket"
+rollback: aws s3 ls s3://my-bucket| awk '{print $4}' | xargs -L 1 aws s3api restore-object --restore-request Days=1 --bucket my-bucket --key
+```
+
+There's more functionality to found in Cement.  Check out the [Config Reference](config-reference.html) to learn more.
