@@ -4,8 +4,8 @@
 * [Monorepo Structure](#monorepo-structure)
 * [Configuring Cement](#configuring-cement)
 * [Global Build Stages](#globl-build-stages)
+* [Overriding Root Configuration](#overriding-root-configuration)
 * [Handling Deployment Failures](#handling-deployment-failures)
-* [Override Root Configuration](#overriding-root-configuration)
 * [Conditional Build Logic](#conditional-build-logic)
 
 ## Getting Started
