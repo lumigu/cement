@@ -59,6 +59,6 @@ The full, enumerated lifecycle looks like this:
 | 25 | `rollback`           |                  | Before all project `rollback` steps.                                        | Any project's `deploy` step failed after at least one `deploy` succeeded. |
 | 26 |                      | `rollback`       | For each project whose `deploy` step succeeded.                             | Any project's `deploy` step failed after at least one `deploy` succeeded. |
 | 27 | `rollback`           |                  | After all project `rollback` steps have finished.                           | Any project's `deploy` step failed after at least one `deploy` succeeded. |
-| 28 | `after_script`       |                  | Before all project `after_script` steps.                                    | Always                                                                    |
-| 29 |                      | `after_script`   | For each project.                                                           | Always                                                                    |
-| 30 | `after_script`       |                  | After all project `after_script` steps have finished.                       | Always                                                                    |
+| 28 | `after_script`       |                  | Before all project `after_script` steps.                                    | The build progressed past `install`.                                      |
+| 29 |                      | `after_script`   | For each project.                                                           | The build progressed past `install`.                                      |
+| 30 | `after_script`       |                  | After all project `after_script` steps have finished.                       | The build progressed past `install`.                                      |
