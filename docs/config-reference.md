@@ -440,7 +440,7 @@ after_all:
 after_all:
   install:
     - echo "Install completed."
-    - sh finalizeDeploy.sh
+    - sh finalizeInstall.sh
 ```
 
 ```yml
@@ -554,49 +554,524 @@ after_all:
 
 ### `before_all`
 
----------
+Defines build stages to run after before their project-level counterparts.
+
+----------
 
 #### `before_all: after_deploy`
+
+Build step that runs before all project-level `after_deploy` steps.  This build step only runs if all project-level and repository-level `deploy` steps succeeded.  If `after_deploy` fails, the build jumps to `rollback`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete before rollback logic is executed.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  after_deploy: echo "Post-deployment beginning."
+```
+
+```yml
+before_all:
+  after_deploy:
+    - echo "Post-deployment beginning."
+    - sh initializePostDeploy.sh
+```
+
+```yml
+before_all:
+  after_deploy:
+    - do: echo "Post-application deployment beginning."
+      on:
+        changed: /*/src/**
+    - do: echo "Post-configuration deployment beginning."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
 #### `before_all: after_failure`
 
+Build step that runs before all project-level `after_success` and `after_failure` steps.  This build step only runs if any project-level `script` step fails.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  after_failure: echo "Build failed."
+```
+
+```yml
+before_all:
+  after_failure:
+    - echo "Beginning script failure handlers."
+    - sh initializeScriptFailure.sh
+```
+
+```yml
+before_all:
+  after_failure:
+    - do: echo "Beginning source script failure handlers."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration script failure handlers."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
+
 ----------
 
 #### `before_all: after_script`
+
+Build step that runs before all project-level `after_script` steps.  This step will always run as long as the build progressed past `install`.  If `after_script` fails, then the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  after_script: echo "Finalizing build."
+```
+
+```yml
+before_all:
+  after_script:
+    - echo "Finalizing build."
+    - sh prepareToFinalize.sh
+```
+
+```yml
+before_all:
+  after_script:
+    - do: echo "Finalizing source build."
+      on:
+        changed: /*/src/**
+    - do: echo "Finalizing configuration merge."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
 #### `before_all: after_success`
 
+Build step that runs before all project-level `after_success` and `after_failure` steps.  This build step only runs if all project-level `script` steps succeeded.  If `after_success` fails, the build jumps to `after_script`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  after_success: echo "Build succeeded.  Beginning post-build."
+```
+
+```yml
+before_all:
+  after_success:
+    - echo "Build succeeded.  Beginning post-build."
+    - sh initializePostBuild.sh
+```
+
+```yml
+before_all:
+  after_success:
+    - do: echo "Application build succeeded.  Beginning post-build."
+      on:
+        changed: /*/src/**
+    - do: echo "Configuration merge succeeded.  Beginning post-merge."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
+
 ----------
 
 #### `before_all: before_deploy`
+
+Build step that runs before all project-level `before_deploy` steps.  This build step only runs if all project-level `script` and `after_success` steps succeeded.  If `before_deploy` fails, the build jumps to `after_script`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  before_deploy: echo "Beginning pre-deploy."
+```
+
+```yml
+before_all:
+  before_deploy:
+    - echo "Beginning pre-deploy."
+    - sh initializePreDeploy.sh
+```
+
+```yml
+before_all:
+  before_deploy:
+    - do: echo "Beginning source deploy initialization."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration deploy initialization."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
 #### `before_all: before_install`
 
+Build step that runs before all project-level `before_install` steps.  If `before_install` fails, the build exits immediately as failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are immediately halted.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  before_install: echo "Beginning install initialization."
+```
+
+```yml
+before_all:
+  before_install:
+    - echo "Beginning install initialization."
+    - sh prepareToInstall.sh
+```
+
+```yml
+before_all:
+  before_install:
+    - do: echo "Beginning install source build components."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning install configuration merge components."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
+
 ----------
 
 #### `before_all: before_script`
+
+Build step that runs before all project-level `before_script` steps.  This build step only runs if all project-level `before_script` steps succeeded.  If `before_script` fails, the build jumps to `after_script`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  before_script: echo "Beginning build initialization."
+```
+
+```yml
+before_all:
+  before_script:
+    - echo "Beginning build initialization."
+    - sh prepareToBuild.sh
+```
+
+```yml
+before_all:
+  before_script:
+    - do: echo "Beginning build source initialization."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning merge configuration initialization."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
 #### `before_all: deploy`
 
+Build step that runs before all project-level `deploy` steps.  This step is only run if all project-level `deploy` steps completed successfully.  If `deploy` fails, the build jumps to `rollback`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  deploy: echo "Beginning deploy."
+```
+
+```yml
+before_all:
+  deploy:
+    - echo "Beginning deploy."
+    - sh prepareDeploy.sh
+```
+
+```yml
+before_all:
+  deploy:
+    - do: echo "Beginning source deploy."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration deploy."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
+
 ----------
 
 #### `before_all: install`
+
+Build step that runs before all project-level `install` steps.  This step is only run if all project-level `install` steps completed successfully.  If `install` fails, the build exits immediately as failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are immediately halted.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  install: echo "Beginning install."
+```
+
+```yml
+before_all:
+  install:
+    - echo "Beginning install."
+    - sh initializeInstall.sh
+```
+
+```yml
+before_all:
+  install:
+    - do: echo "Beginning source component install."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration component install."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
 #### `before_all: rollback`
 
+Build step that runs before all project-level `rollback` steps.  This step only runs if any `deploy` or `after_deploy` command fails.  After all `rollback` commands have completed, regardless if they were successful, the build jumps to `after_script`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  install: echo "Beginning rollback."
+```
+
+```yml
+before_all:
+  install:
+    - echo "Beginning rollback."
+    - sh initializeRollback.sh
+```
+
+```yml
+before_all:
+  install:
+    - do: echo "Beginning application rollback."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration rollback."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
+
 ----------
 
 #### `before_all: script`
+
+Build step that runs before all project-level `script` steps.  This build step only runs if all project-level `script` steps succeeded.  If `script` fails, the build jumps to `after_script`, and the build is considered failed.
+
+__Possible values:__
+
+* **_nil_**: take no action.
+
+* __true__: disable this build step.
+
+* __ShellCommand__: a shell command to execute.
+
+* __ShellCommand[]__: an array of shell commands to execute.  All commands are executed in parallel.  If any command fails (exits with value > 0), all outstanding commands are allowed to complete.
+
+* __Conditional[]__: an array of [Conditional](#conditional) objects.
+
+__Default value:__ _nil_
+
+__Examples:__
+
+```yml
+before_all:
+  before_script: echo "Beginning build script."
+```
+
+```yml
+before_all:
+  before_script:
+    - echo "Beginning build script."
+    - sh initializeBuild.sh
+```
+
+```yml
+before_all:
+  before_script:
+    - do: echo "Beginning source build script."
+      on:
+        changed: /*/src/**
+    - do: echo "Beginning configuration merge script."
+      on:
+        changed:
+          - /config/**
+          - /*/config/**
+```
 
 ----------
 
