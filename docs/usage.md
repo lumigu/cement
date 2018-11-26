@@ -15,7 +15,7 @@
 
 To use this guide some basic knowledge of Travis CI is required.  If you're new to Travis CI, it is recommended that you read through [the documentation](https://docs.travis-ci.com/).
 
-To get started using Cement simply add the following to the `.travis.yml` file found in the root of your GitHub repository.
+To get started using Cement simply add the following to the `.travis.yml` file found in the root of your GitHub repository.ƒ
 
 ```yml
 install: pip install travis_cement
@@ -48,7 +48,7 @@ In the root of your repository create a `.cement.yml` to define your build and d
 ```yml
 for_each:
   install: make install
-  script: make test && make build
+  script: make build && make test
   deploy:
     provider: heroku
     api_key: "YOUR API KEY"
